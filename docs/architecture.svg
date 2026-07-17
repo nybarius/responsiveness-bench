@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="620" viewBox="0 0 1200 620" role="img" aria-labelledby="title desc">
+  <title id="title">Responsiveness Bench architecture</title>
+  <desc id="desc">Raw exchanges are annotated into claim layers and response moves. A deterministic kernel scores coverage. Left, right, and neutral variants share a structural signature. Validation and evaluation report correctness and invariance.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#222"/>
+    </marker>
+    <style>
+      .box { fill: #fff; stroke: #222; stroke-width: 2; rx: 16; ry: 16; }
+      .soft { fill: #f5f5f5; }
+      .title { font: 700 28px system-ui, sans-serif; fill: #111; }
+      .head { font: 700 20px system-ui, sans-serif; fill: #111; }
+      .body { font: 16px system-ui, sans-serif; fill: #222; }
+      .small { font: 14px system-ui, sans-serif; fill: #333; }
+      .arrow { stroke: #222; stroke-width: 2.5; fill: none; marker-end: url(#arrow); }
+    </style>
+  </defs>
+
+  <text x="600" y="48" text-anchor="middle" class="title">Responsiveness Bench</text>
+  <text x="600" y="76" text-anchor="middle" class="body">Separate semantic annotation from deterministic, valence-blind scoring</text>
+
+  <rect x="50" y="125" width="240" height="150" class="box soft"/>
+  <text x="170" y="160" text-anchor="middle" class="head">Raw exchange</text>
+  <text x="75" y="196" class="body">Claim prose</text>
+  <text x="75" y="225" class="body">Response prose</text>
+  <text x="75" y="254" class="small">Political or neutral content</text>
+
+  <rect x="365" y="105" width="300" height="190" class="box"/>
+  <text x="515" y="140" text-anchor="middle" class="head">Typed annotation</text>
+  <text x="390" y="176" class="body">Claim layers</text>
+  <text x="410" y="204" class="small">explicit · implicated · required</text>
+  <text x="390" y="239" class="body">Response moves</text>
+  <text x="410" y="267" class="small">act · target · relation</text>
+
+  <rect x="740" y="125" width="235" height="150" class="box soft"/>
+  <text x="857" y="160" text-anchor="middle" class="head">Scoring kernel</text>
+  <text x="765" y="196" class="body">Compute layer coverage</text>
+  <text x="765" y="225" class="small">No prose</text>
+  <text x="765" y="250" class="small">No names or valence</text>
+
+  <rect x="1000" y="125" width="155" height="150" class="box"/>
+  <text x="1077" y="160" text-anchor="middle" class="head">Verdict</text>
+  <text x="1020" y="196" class="small">fully responsive</text>
+  <text x="1020" y="221" class="small">partially responsive</text>
+  <text x="1020" y="246" class="small">nonresponsive / invalid</text>
+
+  <path d="M290 200 L365 200" class="arrow"/>
+  <path d="M665 200 L740 200" class="arrow"/>
+  <path d="M975 200 L1000 200" class="arrow"/>
+
+  <rect x="155" y="375" width="250" height="145" class="box"/>
+  <text x="280" y="410" text-anchor="middle" class="head">Invariant family</text>
+  <text x="185" y="448" class="body">Left-coded variant</text>
+  <text x="185" y="476" class="body">Right-coded variant</text>
+  <text x="185" y="504" class="body">Neutral control</text>
+
+  <rect x="485" y="355" width="280" height="185" class="box soft"/>
+  <text x="625" y="390" text-anchor="middle" class="head">Dataset validator</text>
+  <text x="510" y="428" class="body">Same structural signature?</text>
+  <text x="510" y="458" class="body">Same expected verdict?</text>
+  <text x="510" y="488" class="body">Kernel agreement?</text>
+  <text x="510" y="518" class="small">Reject drift before evaluation</text>
+
+  <rect x="845" y="375" width="250" height="145" class="box"/>
+  <text x="970" y="410" text-anchor="middle" class="head">Evaluation report</text>
+  <text x="875" y="448" class="body">Accuracy · macro-F1</text>
+  <text x="875" y="476" class="body">Family consistency</text>
+  <text x="875" y="504" class="body">Left/right asymmetry</text>
+
+  <path d="M405 447 L485 447" class="arrow"/>
+  <path d="M765 447 L845 447" class="arrow"/>
+  <path d="M857 275 C857 320 625 315 625 355" class="arrow"/>
+</svg>

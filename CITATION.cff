@@ -1,0 +1,26 @@
+cff-version: 1.2.0
+message: >-
+  If you use Responsiveness Bench in research or evaluation, please cite this
+  software release.
+title: >-
+  Responsiveness Bench: A Valence-Blind Benchmark for Claim-Response
+  Responsiveness
+type: software
+authors:
+  - family-names: Schweizer
+    given-names: Stephen T.
+version: 0.1.0
+date-released: 2026-07-17
+license: MIT
+abstract: >-
+  A deterministic benchmark and validation harness for measuring whether a
+  response covers the explicit and implicated proposition layers of a claim,
+  with left-, right-, and neutral-coded invariant families used to validate
+  labels and measure content-sensitive asymmetry.
+keywords:
+  - argumentation
+  - political bias
+  - language models
+  - evaluation
+  - responsiveness
+  - invariance
