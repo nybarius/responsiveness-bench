@@ -27,8 +27,19 @@ class DatasetValidationReport:
 
 def structural_signature(case: Case) -> tuple[Any, ...]:
     """Return the content-free claim-response structure for invariance checks."""
+    canonical_layers = tuple(
+        sorted(
+            case.claim_layers,
+            key=lambda layer: (
+                layer.layer_kind.value,
+                layer.kind.value,
+                layer.required,
+                layer.backed,
+            ),
+        )
+    )
     target_positions = {
-        layer.layer_id: index for index, layer in enumerate(case.claim_layers)
+        layer.layer_id: index for index, layer in enumerate(canonical_layers)
     }
     layers = tuple(
         (
@@ -37,7 +48,7 @@ def structural_signature(case: Case) -> tuple[Any, ...]:
             layer.required,
             layer.backed,
         )
-        for layer in case.claim_layers
+        for layer in canonical_layers
     )
     moves = tuple(
         sorted(
