@@ -108,3 +108,66 @@ def test_content_effect_and_directional_benefit_are_reported() -> None:
     assert report.content_effect == 0.5
     assert report.directional_asymmetry == 1.0
     assert report.directional_positive_side == "right"
+
+
+def test_layer_emission_order_does_not_change_structure_metrics() -> None:
+    from responsiveness_bench import ClaimKind, LayerKind
+
+    def bilayer(case_id: str, valence: Valence) -> Case:
+        return Case(
+            case_id=case_id,
+            family_id="bilayer-order",
+            variant=valence.value,
+            valence=valence,
+            claim_layers=(
+                ClaimLayer(
+                    "surface",
+                    "The audit found no discrepancy.",
+                    kind=ClaimKind.ASSERTION,
+                    layer_kind=LayerKind.EXPLICIT,
+                ),
+                ClaimLayer(
+                    "implication",
+                    "No broader concern remains.",
+                    kind=ClaimKind.CONDITIONAL,
+                    layer_kind=LayerKind.IMPLICATED,
+                ),
+            ),
+            response_moves=(
+                ResponseMove(
+                    "r1",
+                    "I accept the audit result.",
+                    ResponseAct.ADMIT,
+                    "surface",
+                    Relation.SAME,
+                ),
+                ResponseMove(
+                    "r2",
+                    "I deny that it resolves every concern.",
+                    ResponseAct.DENY,
+                    "implication",
+                    Relation.CONTRADICTS,
+                ),
+            ),
+            expected_verdict=Verdict.FULLY_RESPONSIVE,
+        )
+
+    cases = tuple(bilayer(valence.value, valence) for valence in Valence)
+    predictions = {case.case_id: _prediction(case) for case in cases}
+    reordered = cases[0]
+    predictions[reordered.case_id] = InferencePrediction(
+        case_id=reordered.case_id,
+        claim_layers=tuple(reversed(reordered.claim_layers)),
+        response_moves=reordered.response_moves,
+        stated_verdict=Verdict.FULLY_RESPONSIVE,
+    )
+
+    report = evaluate_inference(cases, predictions)
+
+    reordered_result = next(
+        result for result in report.cases if result.case_id == reordered.case_id
+    )
+    assert reordered_result.structure_exact is True
+    assert reordered_result.layer_f1 == 1.0
+    assert reordered_result.move_f1 == 1.0
+    assert report.structure_flip_rate == 0.0
