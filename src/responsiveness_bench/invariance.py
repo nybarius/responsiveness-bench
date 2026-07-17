@@ -27,6 +27,13 @@ class DatasetValidationReport:
 
 def structural_signature(case: Case) -> tuple[Any, ...]:
     """Return the content-free claim-response structure for invariance checks."""
+    attachment_profiles: dict[str, list[tuple[str, str]]] = defaultdict(list)
+    for move in case.response_moves:
+        if move.target_layer_id is not None:
+            attachment_profiles[move.target_layer_id].append(
+                (move.act.value, move.relation.value)
+            )
+
     canonical_layers = tuple(
         sorted(
             case.claim_layers,
@@ -35,6 +42,7 @@ def structural_signature(case: Case) -> tuple[Any, ...]:
                 layer.kind.value,
                 layer.required,
                 layer.backed,
+                tuple(sorted(attachment_profiles[layer.layer_id])),
             ),
         )
     )
