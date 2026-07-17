@@ -36,11 +36,11 @@ def make_case(
     [
         (ResponseAct.ADMIT, Relation.SAME),
         (ResponseAct.DENY, Relation.CONTRADICTS),
-        (ResponseAct.QUALIFY, Relation.NARROWS),
-        (ResponseAct.REQUEST_EVIDENCE, Relation.UNKNOWN),
+        (ResponseAct.QUALIFY, Relation.NARROWS_WITHIN_SCOPE),
+        (ResponseAct.REQUEST_EVIDENCE, Relation.SAME),
         (ResponseAct.COUNTERASSERT, Relation.CONTRADICTS),
         (ResponseAct.COUNTERASSERT, Relation.ENTAILS),
-        (ResponseAct.COUNTERASSERT, Relation.NARROWS),
+        (ResponseAct.COUNTERASSERT, Relation.NARROWS_WITHIN_SCOPE),
     ],
 )
 def test_single_layer_is_fully_responsive_when_a_move_addresses_it(
@@ -192,3 +192,67 @@ def test_case_without_required_layers_is_invalid() -> None:
 
     assert report.verdict is Verdict.INVALID
     assert report.errors == ("case has no required claim layers",)
+
+
+@pytest.mark.parametrize(
+    ("act", "relation"),
+    [
+        (ResponseAct.ADMIT, Relation.IRRELEVANT),
+        (ResponseAct.DENY, Relation.IRRELEVANT),
+        (ResponseAct.QUALIFY, Relation.SCOPE_MISMATCH),
+        (ResponseAct.REQUEST_EVIDENCE, Relation.IRRELEVANT),
+    ],
+)
+def test_targeted_direct_act_does_not_cover_without_a_covering_relation(
+    act: ResponseAct, relation: Relation
+) -> None:
+    case = make_case(
+        layers=(ClaimLayer("p", "The proposition."),),
+        moves=(ResponseMove("r", "Aimed elsewhere in substance.", act, "p", relation),),
+    )
+
+    report = score_case(case)
+
+    assert report.verdict is Verdict.NONRESPONSIVE
+    assert report.covered_layer_ids == ()
+    assert report.uncovered_layer_ids == ("p",)
+
+
+def test_request_evidence_covers_only_an_unbacked_layer() -> None:
+    move = ResponseMove(
+        "r",
+        "What supports that?",
+        ResponseAct.REQUEST_EVIDENCE,
+        "p",
+        Relation.SAME,
+    )
+    unbacked = make_case(
+        layers=(ClaimLayer("p", "A bare assertion.", backed=False),),
+        moves=(move,),
+        case_id="unbacked",
+    )
+    backed = make_case(
+        layers=(ClaimLayer("p", "An assertion with cited support.", backed=True),),
+        moves=(move,),
+        case_id="backed",
+    )
+
+    assert score_case(unbacked).verdict is Verdict.FULLY_RESPONSIVE
+    assert score_case(backed).verdict is Verdict.NONRESPONSIVE
+
+
+def test_counterassertion_that_merely_restates_target_is_nonresponsive() -> None:
+    case = make_case(
+        layers=(ClaimLayer("p", "The proposition."),),
+        moves=(
+            ResponseMove(
+                "r",
+                "The proposition.",
+                ResponseAct.COUNTERASSERT,
+                "p",
+                Relation.SAME,
+            ),
+        ),
+    )
+
+    assert score_case(case).verdict is Verdict.NONRESPONSIVE

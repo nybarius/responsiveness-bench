@@ -99,7 +99,10 @@ def test_missing_and_extra_predictions_are_reported_not_silently_dropped() -> No
 
 def test_macro_f1_averages_gold_labels_present_in_corpus() -> None:
     cases = corpus()
-    predictions = {case.case_id: Verdict.FULLY_RESPONSIVE for case in cases}
+    predictions = {
+        case.case_id: Verdict.FULLY_RESPONSIVE
+        for case in cases
+    }
 
     report = evaluate_predictions(cases, predictions)
 

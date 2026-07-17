@@ -5,13 +5,16 @@ from pathlib import Path
 from typing import Any, Iterable, Mapping
 
 from .model import (
+    AdjudicationStatus,
     Case,
     ClaimKind,
     ClaimLayer,
     LayerKind,
+    Provenance,
     Relation,
     ResponseAct,
     ResponseMove,
+    Salience,
     Valence,
     Verdict,
 )
@@ -23,22 +26,38 @@ class CorpusFormatError(ValueError):
 
 def case_to_record(case: Case) -> dict[str, Any]:
     return {
+        "adjudication_status": case.adjudication_status.value,
         "annotation_notes": case.annotation_notes,
         "case_id": case.case_id,
+        "claim_text": case.claim_text,
+        "claimant_side": case.claimant_side.value if case.claimant_side else None,
         "claim_layers": [
             {
                 "kind": layer.kind.value,
                 "layer_id": layer.layer_id,
                 "layer_kind": layer.layer_kind.value,
                 "required": layer.required,
+                "backed": layer.backed,
                 "text": layer.text,
             }
             for layer in case.claim_layers
         ],
+        "contamination_canary": case.contamination_canary,
         "expected_verdict": (
             case.expected_verdict.value if case.expected_verdict is not None else None
         ),
         "family_id": case.family_id,
+        "provenance": (
+            {
+                "date": case.provenance.date,
+                "mirror_method": case.provenance.mirror_method,
+                "source": case.provenance.source,
+                "url": case.provenance.url,
+                "verbatim": case.provenance.verbatim,
+            }
+            if case.provenance is not None
+            else None
+        ),
         "response_moves": [
             {
                 "act": move.act.value,
@@ -49,7 +68,8 @@ def case_to_record(case: Case) -> dict[str, Any]:
             }
             for move in case.response_moves
         ],
-        "source": case.source,
+        "response_text": case.response_text,
+        "salience": case.salience.value,
         "valence": case.valence.value,
         "variant": case.variant,
     }
@@ -80,6 +100,7 @@ def case_from_record(record: Mapping[str, Any]) -> Case:
                     layer.get("layer_kind", LayerKind.EXPLICIT.value)
                 ),
                 required=bool(layer.get("required", True)),
+                backed=bool(layer.get("backed", False)),
             )
             for layer in raw_layers
         )
@@ -94,6 +115,21 @@ def case_from_record(record: Mapping[str, Any]) -> Case:
             for move in raw_moves
         )
         raw_expected = record.get("expected_verdict")
+        raw_provenance = record.get("provenance")
+        if raw_provenance is not None and not isinstance(raw_provenance, dict):
+            raise CorpusFormatError("'provenance' must be an object or null")
+        provenance = (
+            Provenance(
+                source=_required_string(raw_provenance, "source"),
+                date=raw_provenance.get("date"),
+                url=raw_provenance.get("url"),
+                verbatim=bool(raw_provenance.get("verbatim", False)),
+                mirror_method=raw_provenance.get("mirror_method"),
+            )
+            if raw_provenance is not None
+            else None
+        )
+        raw_claimant_side = record.get("claimant_side")
         return Case(
             case_id=_required_string(record, "case_id"),
             family_id=_required_string(record, "family_id"),
@@ -101,10 +137,20 @@ def case_from_record(record: Mapping[str, Any]) -> Case:
             valence=Valence(record["valence"]),
             claim_layers=layers,
             response_moves=moves,
+            claim_text=record.get("claim_text"),
+            response_text=record.get("response_text"),
+            claimant_side=(
+                Valence(raw_claimant_side) if raw_claimant_side is not None else None
+            ),
+            salience=Salience(record.get("salience", Salience.LOADED.value)),
+            provenance=provenance,
+            adjudication_status=AdjudicationStatus(
+                record.get("adjudication_status", AdjudicationStatus.GOLD.value)
+            ),
+            contamination_canary=record.get("contamination_canary"),
             expected_verdict=(
                 Verdict(raw_expected) if raw_expected is not None else None
             ),
-            source=record.get("source"),
             annotation_notes=record.get("annotation_notes"),
         )
     except CorpusFormatError:
@@ -115,17 +161,23 @@ def case_from_record(record: Mapping[str, Any]) -> Case:
 
 def load_cases(path: str | Path) -> tuple[Case, ...]:
     source = Path(path)
+    sources = tuple(sorted(source.glob("*.jsonl"))) if source.is_dir() else (source,)
     cases: list[Case] = []
-    for line_number, line in enumerate(source.read_text(encoding="utf-8").splitlines(), 1):
-        if not line.strip():
-            continue
-        try:
-            record = json.loads(line)
-            if not isinstance(record, dict):
-                raise CorpusFormatError("record must be a JSON object")
-            cases.append(case_from_record(record))
-        except (json.JSONDecodeError, CorpusFormatError) as exc:
-            raise CorpusFormatError(f"{source.name}:{line_number}: {exc}") from exc
+    for corpus_file in sources:
+        for line_number, line in enumerate(
+            corpus_file.read_text(encoding="utf-8").splitlines(), 1
+        ):
+            if not line.strip():
+                continue
+            try:
+                record = json.loads(line)
+                if not isinstance(record, dict):
+                    raise CorpusFormatError("record must be a JSON object")
+                cases.append(case_from_record(record))
+            except (json.JSONDecodeError, CorpusFormatError) as exc:
+                raise CorpusFormatError(
+                    f"{corpus_file.name}:{line_number}: {exc}"
+                ) from exc
     return tuple(cases)
 
 

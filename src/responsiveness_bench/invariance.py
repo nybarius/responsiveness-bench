@@ -3,8 +3,9 @@ from __future__ import annotations
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from typing import Any, Iterable
+from uuid import UUID
 
-from .model import Case, Valence
+from .model import AdjudicationStatus, Case, Valence
 from .scoring import score_case
 
 
@@ -34,6 +35,7 @@ def structural_signature(case: Case) -> tuple[Any, ...]:
             layer.kind.value,
             layer.layer_kind.value,
             layer.required,
+            layer.backed,
         )
         for layer in case.claim_layers
     )
@@ -56,6 +58,11 @@ def structural_signature(case: Case) -> tuple[Any, ...]:
 
 def validate_dataset(cases: Iterable[Case]) -> DatasetValidationReport:
     materialized = tuple(cases)
+    gold = tuple(
+        case
+        for case in materialized
+        if case.adjudication_status is AdjudicationStatus.GOLD
+    )
     issues: list[ValidationIssue] = []
 
     case_id_counts = Counter(case.case_id for case in materialized)
@@ -68,6 +75,32 @@ def validate_dataset(cases: Iterable[Case]) -> DatasetValidationReport:
             )
         )
 
+    canaries = {
+        case.contamination_canary
+        for case in materialized
+        if case.contamination_canary is not None
+    }
+    if canaries:
+        if len(canaries) != 1 or any(
+            case.contamination_canary is None for case in materialized
+        ):
+            issues.append(
+                ValidationIssue(
+                    code="dataset_canary_mismatch",
+                    message="all records must carry one identical contamination canary",
+                )
+            )
+        for canary in sorted(canaries):
+            try:
+                UUID(canary)
+            except (ValueError, AttributeError):
+                issues.append(
+                    ValidationIssue(
+                        code="invalid_contamination_canary",
+                        message=f"contamination canary '{canary}' is not a GUID",
+                    )
+                )
+
     for case in materialized:
         score = score_case(case)
         if score.errors:
@@ -79,11 +112,13 @@ def validate_dataset(cases: Iterable[Case]) -> DatasetValidationReport:
                     family_id=case.family_id,
                 )
             )
+        if case.adjudication_status is AdjudicationStatus.CONTESTED:
+            continue
         if case.expected_verdict is None:
             issues.append(
                 ValidationIssue(
                     code="missing_expected_verdict",
-                    message="case has no expected verdict",
+                    message="gold case has no expected verdict",
                     case_id=case.case_id,
                     family_id=case.family_id,
                 )
@@ -102,7 +137,7 @@ def validate_dataset(cases: Iterable[Case]) -> DatasetValidationReport:
             )
 
     families: dict[str, list[Case]] = defaultdict(list)
-    for case in materialized:
+    for case in gold:
         families[case.family_id].append(case)
 
     required_valences = frozenset(Valence)

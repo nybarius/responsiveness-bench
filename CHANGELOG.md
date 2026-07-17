@@ -6,6 +6,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-07-17
+
+### Added
+
+- Full-structure inference mode and protocol-relative manifests.
+- Relation-gated coverage, scope split, and backing-aware challenges.
+- Five structural families, constant-policy auditing, and field-level agreement.
+- Naturalistic-corpus heat, provenance, contested-typing, and contamination protocols.
+
+
 ## [0.1.0] - 2026-07-17
 
 ### Added

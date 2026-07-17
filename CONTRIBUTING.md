@@ -1,51 +1,32 @@
 # Contributing
 
-Responsiveness Bench is designed for adversarial extension. The best contribution is a case that exposes a real weakness in the type system, annotation protocol, validator, or metrics.
+Responsiveness Bench is designed for adversarial extension. The strongest contribution is a case that exposes a weakness in the type system, annotation protocol, verifier, or metrics.
 
-## Contribution types
+## Structural families
 
-- New left/right/neutral case families.
-- Naturalistic exchanges suitable for annotation studies.
-- Corrections to claim layers, response targets, or logical relations.
-- Model adapters that emit benchmark prediction JSONL.
-- Metrics that preserve the separation between responsiveness and truth.
-- Reproducible evidence that an existing type or rule is underspecified.
+Every gold family must contain one left-coded, one right-coded, and one sterile neutral arm. Preserve layer count and order, layer kinds, required and backed flags, response acts, target positions, relations, and expected verdict.
 
-## Case-family requirements
+Before assigning `contradicts`, write the compatibility test: assume the response proposition is true and ask whether the target layer can remain true. If it can, use `scope_mismatch`, `irrelevant`, or another non-covering relation.
 
-Every proposed family must include exactly one `left`, one `right`, and one `neutral` variant. All three variants must preserve:
+## Naturalistic cases
 
-- claim-layer count and order;
-- claim kinds, layer kinds, and required flags;
-- response acts;
-- target positions;
-- counterassertion relations; and
-- expected verdict.
+Prefer verbatim public exchanges and found political mirrors. Record source and date, retain public names, and mark whether a mirror was found or synthesized. Synthesized text must pass a believability screen.
 
-The variants need not be equally plausible or morally equivalent. They must instantiate the same annotated claim-response structure.
-
-Do not encode truth, evidentiary weight, tone, good faith, political moderation, or policy desirability in `expected_verdict`.
-
-## Submission checklist
-
-1. Add the three JSONL records to an appropriate corpus file.
-2. Explain the source or construction of the family in the pull request.
-3. State the proposition layers in ordinary language.
-4. Identify the hardest annotation judgment.
-5. Run:
+Two annotators should type cases independently. Run:
 
 ```bash
-PYTHONPATH=src python -m responsiveness_bench.cli validate data/seed.jsonl
-pytest
-python -m compileall -q src tests
+responsiveness-bench agreement annotator-a.jsonl annotator-b.jsonl
 ```
 
-6. Add tests for any behavior change. Documentation and corpus-only changes should not alter existing tests unless the specification itself changes.
+Adjudicate disagreements with a written compatibility argument. Unresolved cases belong in the contested set with no gold verdict.
 
-## Adversarial standard
+## Required gate
 
-A proposed extension should survive the strongest content-preserving reversal you can construct. Before submitting a new type or exception, ask whether the same rule would be accepted if the political valence were reversed and the names removed.
+```bash
+pytest
+python -m compileall -q src tests
+responsiveness-bench validate data/seed
+responsiveness-bench audit data/seed --check
+```
 
-## Scope discipline
-
-Responsiveness is only one dimension of reasoning quality. Proposals concerning factual correctness, source reliability, burden allocation, inference validity, or rhetoric should be modeled as separate modules unless they change whether a response addresses a target proposition.
+Behavior changes require tests. Corpus-only changes must preserve family invariance and the contamination canary.

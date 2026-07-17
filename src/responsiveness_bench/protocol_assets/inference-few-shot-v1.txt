@@ -1,0 +1,17 @@
+You are annotating whether a response engages the propositions advanced by a claim.
+
+Input contains only raw claim prose and raw response prose. Emit exactly one JSON object conforming to the supplied schema. Identify explicit and implicated claim layers, whether support was proffered for each layer, response moves, each move's aimed target, and the relation between the move and that target. Then state the protocol-relative verdict.
+
+Compatibility test: assume everything asserted by the response move is true. If the target claim layer can still be true, the move does not contradict that layer.
+
+Example 1
+Claim: The backup process remains capable of silent data loss.
+Response: There is no evidence that any production file was lost.
+Typing: one explicit unbacked layer; deny aimed at that layer; relation irrelevant; verdict nonresponsive. The occurrence denial and posture claim can both be true.
+
+Example 2
+Claim: The program was never audited.
+Response: The 2023 audit, which covered the program, found two deficiencies.
+Typing: one explicit unbacked layer; counterassert aimed at that layer; relation contradicts; verdict fully_responsive. The response entails the claim's negation.
+
+Coverage rules: admit+same, deny+contradicts, qualify+narrows_within_scope, and counterassert+entails|contradicts|narrows_within_scope cover their targets. request_evidence+same covers only an unbacked target. Other combinations do not cover.

@@ -2,19 +2,21 @@ from __future__ import annotations
 
 from collections import Counter
 
-from .model import Case, Relation, ResponseAct, ResponseMove, ScoreReport, Verdict
+from .model import Case, ClaimLayer, Relation, ResponseAct, ResponseMove, ScoreReport, Verdict
 
-_DIRECTLY_RESPONSIVE_ACTS = frozenset(
-    {
-        ResponseAct.ADMIT,
-        ResponseAct.DENY,
-        ResponseAct.QUALIFY,
-        ResponseAct.REQUEST_EVIDENCE,
-    }
-)
-_RESPONSIVE_COUNTERASSERT_RELATIONS = frozenset(
-    {Relation.CONTRADICTS, Relation.ENTAILS, Relation.NARROWS}
-)
+_COVERING_RELATIONS_BY_ACT = {
+    ResponseAct.ADMIT: frozenset({Relation.SAME}),
+    ResponseAct.DENY: frozenset({Relation.CONTRADICTS}),
+    ResponseAct.QUALIFY: frozenset({Relation.NARROWS_WITHIN_SCOPE}),
+    ResponseAct.REQUEST_EVIDENCE: frozenset({Relation.SAME}),
+    ResponseAct.COUNTERASSERT: frozenset(
+        {
+            Relation.CONTRADICTS,
+            Relation.ENTAILS,
+            Relation.NARROWS_WITHIN_SCOPE,
+        }
+    ),
+}
 
 
 def _validation_errors(case: Case) -> tuple[str, ...]:
@@ -37,14 +39,17 @@ def _validation_errors(case: Case) -> tuple[str, ...]:
     return tuple(errors)
 
 
-def _move_is_responsive(move: ResponseMove) -> bool:
-    act = move.act
-    if act in _DIRECTLY_RESPONSIVE_ACTS:
-        return True
-    return (
-        act is ResponseAct.COUNTERASSERT
-        and move.relation in _RESPONSIVE_COUNTERASSERT_RELATIONS
-    )
+def _move_covers_layer(move: ResponseMove, layer: ClaimLayer) -> bool:
+    """Return whether an aimed move engages its target under this protocol.
+
+    A counterassertion with ``same`` merely restates the target and is therefore
+    uncovered; indirect engagement must entail, contradict, or narrow it.
+    """
+    if move.relation not in _COVERING_RELATIONS_BY_ACT.get(move.act, frozenset()):
+        return False
+    if move.act is ResponseAct.REQUEST_EVIDENCE and layer.backed:
+        return False
+    return True
 
 
 def score_case(case: Case) -> ScoreReport:
@@ -57,13 +62,15 @@ def score_case(case: Case) -> ScoreReport:
             errors=errors,
         )
 
+    layers_by_id = {layer.layer_id: layer for layer in case.claim_layers}
     required_ids = tuple(
         layer.layer_id for layer in case.claim_layers if layer.required
     )
     covered = {
         move.target_layer_id
         for move in case.response_moves
-        if move.target_layer_id is not None and _move_is_responsive(move)
+        if move.target_layer_id is not None
+        and _move_covers_layer(move, layers_by_id[move.target_layer_id])
     }
     covered_ids = tuple(layer_id for layer_id in required_ids if layer_id in covered)
     uncovered_ids = tuple(

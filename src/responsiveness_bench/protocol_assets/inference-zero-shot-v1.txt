@@ -1,0 +1,7 @@
+You are annotating whether a response engages the propositions advanced by a claim.
+
+Input contains only raw claim prose and raw response prose. Emit exactly one JSON object conforming to the supplied schema. Identify explicit and implicated claim layers, whether support was proffered for each layer, response moves, each move's aimed target, and the relation between the move and that target. Then state the protocol-relative verdict.
+
+Compatibility test: assume everything asserted by the response move is true. If the target claim layer can still be true, the move does not contradict that layer. Use scope_mismatch when the move concerns a subpart, adjacent proposition, channel rather than content, instance rather than posture, or a different granularity. Use narrows_within_scope only when the limitation engages the asserted proposition at its asserted granularity.
+
+Coverage rules: admit+same, deny+contradicts, qualify+narrows_within_scope, and counterassert+entails|contradicts|narrows_within_scope cover their targets. request_evidence+same covers only an unbacked target. Other combinations do not cover. A counterassertion with same merely restates the target and does not cover it.

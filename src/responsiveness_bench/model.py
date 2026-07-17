@@ -38,7 +38,8 @@ class Relation(StrEnum):
     SAME = "same"
     CONTRADICTS = "contradicts"
     ENTAILS = "entails"
-    NARROWS = "narrows"
+    NARROWS_WITHIN_SCOPE = "narrows_within_scope"
+    SCOPE_MISMATCH = "scope_mismatch"
     IRRELEVANT = "irrelevant"
     UNKNOWN = "unknown"
 
@@ -49,6 +50,25 @@ class Valence(StrEnum):
     NEUTRAL = "neutral"
 
 
+class Salience(StrEnum):
+    LOADED = "loaded"
+    STERILE = "sterile"
+
+
+class AdjudicationStatus(StrEnum):
+    GOLD = "gold"
+    CONTESTED = "contested"
+
+
+@dataclass(frozen=True, slots=True)
+class Provenance:
+    source: str
+    date: str | None = None
+    url: str | None = None
+    verbatim: bool = False
+    mirror_method: str | None = None
+
+
 @dataclass(frozen=True, slots=True)
 class ClaimLayer:
     layer_id: str
@@ -56,6 +76,7 @@ class ClaimLayer:
     kind: ClaimKind = ClaimKind.ASSERTION
     layer_kind: LayerKind = LayerKind.EXPLICIT
     required: bool = True
+    backed: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -75,8 +96,14 @@ class Case:
     valence: Valence
     claim_layers: tuple[ClaimLayer, ...]
     response_moves: tuple[ResponseMove, ...]
+    claim_text: str | None = None
+    response_text: str | None = None
+    claimant_side: Valence | None = None
+    salience: Salience = Salience.LOADED
+    provenance: Provenance | None = None
+    adjudication_status: AdjudicationStatus = AdjudicationStatus.GOLD
+    contamination_canary: str | None = None
     expected_verdict: Verdict | None = None
-    source: str | None = None
     annotation_notes: str | None = None
 
 

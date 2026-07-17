@@ -11,6 +11,7 @@ from responsiveness_bench import (
     ClaimLayer,
     CorpusFormatError,
     LayerKind,
+    Provenance,
     Relation,
     ResponseAct,
     ResponseMove,
@@ -37,6 +38,7 @@ def sample_case(case_id: str = "sample") -> Case:
                 "The audit found no discrepancy.",
                 ClaimKind.ASSERTION,
                 LayerKind.EXPLICIT,
+                backed=True,
             ),
             ClaimLayer(
                 "implication",
@@ -62,7 +64,7 @@ def sample_case(case_id: str = "sample") -> Case:
             ),
         ),
         expected_verdict=Verdict.FULLY_RESPONSIVE,
-        source="transcript:raffensperger",
+        provenance=Provenance(source="transcript:raffensperger", date="2026-07-17"),
         annotation_notes="Bilayer example.",
     )
 
@@ -111,7 +113,7 @@ def test_validate_cli_emits_machine_readable_report(
             claim_layers=base.claim_layers,
             response_moves=base.response_moves,
             expected_verdict=base.expected_verdict,
-            source=base.source,
+            provenance=base.provenance,
             annotation_notes=base.annotation_notes,
         ),
         Case(
@@ -122,7 +124,7 @@ def test_validate_cli_emits_machine_readable_report(
             claim_layers=base.claim_layers,
             response_moves=base.response_moves,
             expected_verdict=base.expected_verdict,
-            source=base.source,
+            provenance=base.provenance,
             annotation_notes=base.annotation_notes,
         ),
     )
@@ -168,3 +170,28 @@ def test_oracle_and_evaluate_cli_compose_end_to_end(
     output = json.loads(capsys.readouterr().out)
     assert output["accuracy"] == 1.0
     assert output["left_right_consistency"] == 1.0
+
+
+def test_case_schema_exposes_inference_and_heat_metadata() -> None:
+    from inspect import signature
+
+    import responsiveness_bench as rb
+
+    case_parameters = signature(Case).parameters
+    assert "claim_text" in case_parameters
+    assert "response_text" in case_parameters
+    assert "claimant_side" in case_parameters
+    assert "salience" in case_parameters
+    assert "provenance" in case_parameters
+    assert "adjudication_status" in case_parameters
+    assert "contamination_canary" in case_parameters
+    assert hasattr(rb, "Salience")
+    assert hasattr(rb, "AdjudicationStatus")
+    assert hasattr(rb, "Provenance")
+
+
+def test_typed_provenance_replaces_legacy_source_field() -> None:
+    from inspect import signature
+
+    assert "source" not in signature(Case).parameters
+    assert "source" not in case_to_record(sample_case())

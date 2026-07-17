@@ -1,78 +1,90 @@
 # Annotation Guide
 
-## Unit of analysis
+Protocol version: `2.0.0`
 
-A case contains one claim and one response. Annotate the smallest proposition layers necessary to explain what the response must address. Do not encode whether the claim is true, popular, reasonable, or politically sympathetic.
+Responsiveness is a relation between propositions advanced by a claim and moves aimed at those propositions by a response. Targeting records where a move is directed. Relation records whether it engages that target. The distinction is load-bearing.
+
+## Compatibility test
+
+**Assume everything the response asserts is true; can the claim layer still be true?**
+
+If yes, the response does not contradict that layer. Write out the two propositions together. If they are jointly possible, annotate a non-covering relation even when the response plainly gestures toward the same subject.
+
+- “No vote was altered” can be true while “the system remains vulnerable” is true. The occurrence denial is compatible with the posture claim.
+- “A briefing was delivered” can be true while “the briefing’s content was tailored” is true. The channel does not decide the content.
+- “The stronger allegation is false” can be true while the narrower allegation is true. A strawman denial therefore fails automatically.
+
+Every disputed relation annotation must cite this test. Adjudication consists of stating the response proposition, stating the target layer, and explaining whether both can be true together.
 
 ## Claim layers
 
-Use an `explicit` layer for a proposition directly stated. Use an `implicated` layer only when the utterance communicatively advances a further conclusion that a competent reader would treat as part of the argumentative move. Mere background associations, anticipated downstream uses, or hostile extrapolations are not implicated layers.
+Split the claim into the smallest propositions that can be answered independently.
 
-Set `required` to `true` when leaving the layer unanswered would make the response incomplete. Context may be retained as an optional layer, but optional layers do not affect the verdict.
+- `explicit`: directly stated.
+- `implicated`: communicatively advanced although not literally stated.
 
-Use the narrowest fitting claim kind:
+Set `required` to `true` when leaving the layer unanswered would make the response incomplete. Set `backed` to `true` when the exchange itself proffers support for the layer—a citation, dataset, quoted record, calculation, or identified authority. `backed` records whether support was offered, not whether it is persuasive.
 
-- `assertion`: an ordinary proposition;
-- `causal`: X caused, increased, reduced, or explains Y;
-- `conditional`: if X then Y, or a conclusion advanced from another layer;
-- `normative`: should, ought, permissible, justified;
-- `comparative`: more, less, better, worse, safer.
+Use the narrowest fitting claim kind: `assertion`, `causal`, `conditional`, `normative`, or `comparative`.
 
 ## Response moves
 
-Split a response when it performs distinct acts against distinct layers. Each move receives one target layer when it genuinely addresses that proposition.
+Split a response when it performs different acts or aims at different layers.
 
 - `admit`: accepts the target.
 - `deny`: rejects the target.
-- `qualify`: accepts or rejects only within a narrower scope.
-- `request_evidence`: directly challenges the support or burden for the target.
+- `qualify`: limits the target.
+- `request_evidence`: challenges the support or burden for the target.
 - `counterassert`: advances another proposition as an answer.
-- `deflect`: changes the subject, attacks motive, or substitutes a different dispute.
-- `ignore`: contains no answer to the target.
+- `deflect`: changes the subject or substitutes another dispute.
+- `ignore`: supplies no answer.
 
-For a counterassertion, annotate its relation to the target:
+A move may aim at a layer without engaging it. Preserve that fact by keeping the `target_layer_id` and assigning the correct non-covering relation. Do not erase the phenomenon with a null target.
 
-- `entails`: if accepted, it supports admission of the target;
-- `contradicts`: if accepted, it supports denial of the target;
-- `narrows`: if accepted, it limits the target's scope;
-- `irrelevant`: it does not bear on the target;
+## Relations
+
+- `same`: the move accepts, repeats, or directly requests support for the same proposition.
+- `contradicts`: the response proposition and target cannot both be true.
+- `entails`: the response proposition entails acceptance of the target.
+- `narrows_within_scope`: the move limits the asserted proposition at the same granularity.
+- `scope_mismatch`: the move concerns a subpart, adjacent proposition, channel rather than content, instance rather than posture, existence rather than quality, or another granularity.
+- `irrelevant`: the move does not bear on the target even though it may be aimed rhetorically at it.
 - `unknown`: the annotation does not establish a usable relation.
 
-The direct acts—admit, deny, qualify, and request evidence—are responsive by their act annotation. The relation field is operative for counterassertions.
+Apply the compatibility test before assigning `contradicts`. Use `narrows_within_scope` only when the limitation operates inside the proposition actually asserted. Use `scope_mismatch` when the response changes the object or level of generality.
 
-## Bilayer claims
+## Coverage rule
 
-Deniable implicature is the central hard case. When a speaker states P while using P to advance Q, represent P and Q separately. A response that accepts P but disputes Q is fully responsive because it addresses both layers. A response that discusses only P is partial even if it is correct about P.
+A required layer is covered only by one of these act-relation combinations:
 
-Do not manufacture a second layer merely because an audience could infer one. The test is whether Q is part of the claim's argumentative work in context.
+| Act | Covering relation | Additional condition |
+|---|---|---|
+| `admit` | `same` | — |
+| `deny` | `contradicts` | — |
+| `qualify` | `narrows_within_scope` | — |
+| `request_evidence` | `same` | target is not `backed` |
+| `counterassert` | `entails`, `contradicts`, or `narrows_within_scope` | — |
 
-## Invariance triples
+A counterassertion with `same` merely restates the target and does not cover it. `scope_mismatch`, `irrelevant`, and `unknown` never cover. The verdict is `fully_responsive` when all required layers are covered, `partially_responsive` when some are covered, and `nonresponsive` when none are covered.
 
-Every family must contain one left-coded, one right-coded, and one neutral variant. Preserve exactly:
+## Invariance families
 
-- number and order of claim layers;
-- claim kinds, layer kinds, and required flags;
-- response acts;
-- target positions;
-- counterassertion relations; and
+Each gold family contains one left-coded, one right-coded, and one sterile neutral arm. Preserve:
+
+- layer count, order, kind, explicit/implicated status, required flags, and backing status;
+- response acts, target positions, and relations;
 - expected verdict.
 
-Change only the domain content. The neutral item should use an engineering, administrative, or other nonpartisan setting with the same logical skeleton.
+The validator compares content-free structural signatures before any model is evaluated. The redundant family-label check remains as defense in depth.
 
-A valid triple is not evidence that the three real-world propositions are equally plausible. It proves only that the benchmark's responsiveness label does not depend on their content.
+## Independent annotation and hard cases
 
-## Adjudication sequence
+Two annotators type naturalistic exchanges independently and blind to one another’s work. Report Krippendorff’s alpha separately for layer count, act, target, and relation. Resolve disagreements by a written compatibility-test argument.
 
-1. Segment the claim into proposition layers.
-2. Mark required versus optional layers.
-3. Segment the response into moves.
-4. Assign each genuine target.
-5. Assign response act and relation.
-6. Run the deterministic kernel.
-7. Construct the two content-swapped variants.
-8. Run dataset validation.
-9. Resolve structural or label failures before including the family.
+A genuine disagreement is not forced into gold. Mark it `contested`, omit an expected verdict, retain it in the published hard set, and exclude it from gold scoring. The size and composition of that bin measure the boundary of the decidable portion of the task.
 
-## Exclusions
+## Protocol identity
 
-Do not encode truth, evidentiary weight, burden satisfaction, rhetorical quality, tone, good faith, ideological moderation, or policy desirability in the verdict. Those may be separate annotations, but combining them with responsiveness destroys the benchmark's verifiable core.
+The annotation-guide version and kernel version determine the protocol hash. Every score and evaluation carries a manifest containing the protocol hash, dataset hash, model identifier, and prompt hash. Verdicts are therefore protocol-relative: they state what this declared procedure returns on this declared dataset, not an unqualified fact about the exchange.
+
+Every dataset record carries one shared contamination-canary GUID. Dataset validation rejects inconsistent or malformed canaries.

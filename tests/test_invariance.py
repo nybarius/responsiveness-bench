@@ -139,3 +139,62 @@ def test_duplicate_case_id_is_rejected() -> None:
     report = validate_dataset((left, right, duplicate))
 
     assert "duplicate_case_id" in {issue.code for issue in report.issues}
+
+
+def test_protocol_vocabulary_declares_backing_and_scope_relations() -> None:
+    from inspect import signature
+
+    relation_values = {relation.value for relation in Relation}
+
+    assert "backed" in signature(ClaimLayer).parameters
+    assert "narrows_within_scope" in relation_values
+    assert "scope_mismatch" in relation_values
+
+
+def test_signature_changes_when_backing_status_changes() -> None:
+    left, _, _ = trio()
+    altered = replace(
+        left,
+        claim_layers=(replace(left.claim_layers[0], backed=True),),
+    )
+
+    assert structural_signature(left) != structural_signature(altered)
+
+
+def test_legacy_unsplit_narrows_relation_is_not_part_of_protocol() -> None:
+    assert "narrows" not in {relation.value for relation in Relation}
+
+
+def test_contested_typing_is_retained_but_excluded_from_gold_validation() -> None:
+    from responsiveness_bench import AdjudicationStatus
+
+    cases = trio()
+    contested = replace(
+        cases[0],
+        case_id="contested",
+        family_id="hard-set",
+        adjudication_status=AdjudicationStatus.CONTESTED,
+        expected_verdict=None,
+    )
+
+    report = validate_dataset(cases + (contested,))
+
+    assert report.valid is True
+    assert report.case_count == 4
+    assert report.family_count == 1
+
+
+def test_dataset_canary_must_be_one_valid_guid_when_present() -> None:
+    left, right, neutral = trio()
+    valid = "7f4d02c8-2bde-4d5b-9f17-6b7e45c3a291"
+    cases = (
+        replace(left, contamination_canary=valid),
+        replace(right, contamination_canary=valid),
+        replace(neutral, contamination_canary="not-a-guid"),
+    )
+
+    report = validate_dataset(cases)
+
+    codes = {issue.code for issue in report.issues}
+    assert "dataset_canary_mismatch" in codes
+    assert "invalid_contamination_canary" in codes

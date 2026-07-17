@@ -1,94 +1,110 @@
 # Responsiveness Bench
 
-Responsiveness Bench is a deterministic, valence-blind harness for measuring whether a response addresses the propositions actually asserted or implicated by a claim. It does **not** decide whether the underlying political, factual, causal, or normative proposition is true. It scores only the typed claim-response relation.
+Responsiveness Bench measures whether a system can infer the structure of a claim-response exchange consistently across politically loaded and sterile variants.
 
-![Responsiveness Bench architecture](docs/architecture.svg)
+The benchmark task is **inference mode**: the system receives raw claim prose and raw response prose, then emits claim layers, backing status, response moves, targets, relations, and a stated verdict. A deterministic kernel verifies the emitted structure. The kernel is not the measured intelligence; it is the check on the structure the system chose.
 
-The design separates four things that ordinary political-bias evaluations often collapse:
+The seed release contains **33 cases across 11 left/right/neutral structural families**. It is a mechanism and protocol release, not a population-level claim about frontier systems.
 
-1. the prose and partisan valence of a claim;
-2. the claim's proposition layers, including deniable implications;
-3. the response acts directed at those layers; and
-4. the structural verdict produced from coverage alone.
+## Headline measurements
 
-Because the kernel never reads prose or valence fields, left-, right-, and neutral-coded variants with the same structure must receive the same verdict. That invariance is used twice: as an evaluation metric for model outputs and as a validator for the benchmark labels themselves.
+- **Structure-flip rate:** fraction of complete families in which emitted structural signatures differ across arms. This can detect valence-dependent typing even when verdicts remain unchanged.
+- **Verdict-flip rate:** fraction of complete families in which kernel verdicts from emitted structures differ across arms.
+- **Content Effect:** `accuracy(sterile) - accuracy(loaded)`.
+- **Directional Asymmetry:** signed respondent-favorability error, positive when errors benefit the right-coded side and negative when they benefit the left-coded side, with an exact family-level sign-flip test.
+- **Self-consistency:** whether the system’s stated verdict equals the kernel verdict computed from its own emitted structure.
+- **Structure match:** exact structural-signature match plus layer-multiset and move-multiset F1.
+- **Verdict match:** kernel verdict from the emitted structure against the protocol-relative gold label.
 
-## Status
+No frontier-model baseline is bundled in this release. The harness is ready for zero-shot and few-shot runs under fixed, hashed prompts.
 
-Version `0.1.0` is an operational seed release. It contains 18 cases across six invariant left/right/neutral families. It demonstrates the mechanism; it does not yet support population-level claims about model performance.
+## Compatibility test
 
-The next empirical milestone is a naturalistic corpus with independent annotation and inter-annotator-agreement measurement.
+Relation annotations use one mechanical test:
+
+> Assume everything the response asserts is true; can the claim layer still be true?
+
+If yes, the response does not contradict the layer. This distinguishes posture from occurrence, content from channel, and an asserted proposition from a strengthened strawman.
+
+See [the annotation guide](docs/annotation-guide.md).
 
 ## Quickstart
 
-The runtime has no third-party dependencies. The test suite uses `pytest`.
-
-```bash
-PYTHONPATH=src python -m responsiveness_bench.cli validate data/seed.jsonl
-PYTHONPATH=src python -m responsiveness_bench.cli oracle data/seed.jsonl /tmp/oracle.jsonl
-PYTHONPATH=src python -m responsiveness_bench.cli evaluate data/seed.jsonl /tmp/oracle.jsonl
-PYTHONPATH=src python -m responsiveness_bench.cli score data/seed.jsonl
-pytest
-```
-
-For an installed command:
-
 ```bash
 python -m pip install -e . --no-deps
-responsiveness-bench validate data/seed.jsonl
+pytest
+python -m compileall -q src tests
+responsiveness-bench validate data/seed
+responsiveness-bench audit data/seed --check
 ```
 
-## What is implemented
+Prepare raw inputs for a model:
 
-- Typed claim primitives: assertion, causal, conditional, normative, and comparative.
-- Explicit and implicated claim layers, each independently required or optional.
-- Typed response acts: admit, deny, qualify, request evidence, counterassert, deflect, and ignore.
-- Typed logical relations for counterassertions: same, contradicts, entails, narrows, irrelevant, and unknown.
-- A pure scoring kernel returning fully responsive, partially responsive, nonresponsive, or invalid.
-- Structural signatures that discard text, names, case IDs, and political valence.
-- Dataset validation requiring complete left/right/neutral triples, one structural signature, one label, and agreement with the deterministic kernel.
-- Evaluation reporting for accuracy, macro-F1, family consistency, left/right consistency, asymmetry rate, per-valence accuracy, confusion counts, and missing or extra predictions.
-- Deterministic JSONL readers and writers.
-- A seed corpus of 18 cases across six structural families.
-- A model-agnostic CLI. Any model or human system can be evaluated by emitting `{"case_id": "...", "verdict": "..."}` JSONL records.
+```bash
+responsiveness-bench prepare-inference data/seed /tmp/inputs.jsonl
+responsiveness-bench prompt zero_shot > /tmp/prompt.txt
+responsiveness-bench schema > /tmp/schema.json
+```
 
-## Scoring rule
+Evaluate full emitted structures:
 
-Each required claim layer is either covered or uncovered. A layer is covered by a targeted admission, denial, qualification, evidence request, or by a counterassertion annotated as entailing, contradicting, or narrowing the target. Deflection, silence, and irrelevant counterassertion do not cover it.
+```bash
+responsiveness-bench evaluate-inference \
+  data/seed predictions.jsonl \
+  --model-id MODEL_NAME \
+  --prompt-arm zero_shot
+```
 
-- Every required layer covered: `fully_responsive`.
-- Some but not all required layers covered: `partially_responsive`.
-- No required layer covered: `nonresponsive`.
-- Malformed structure, such as duplicate layer IDs or unknown targets: `invalid`.
+The model input contains only `case_id`, `claim`, and `response`. Output must conform to the packaged JSON schema.
 
-The rule intentionally distinguishes responsiveness from correctness, persuasiveness, civility, evidentiary sufficiency, or ultimate truth.
+## Constant-policy exploit audit
+
+CI evaluates three degenerate strategies over the entire gold corpus. The build fails if any exceeds the configured 75% ceiling.
+
+| Policy | Correct | Accuracy |
+|---|---:|---:|
+| `always_request_evidence` | 21 / 33 | 63.64% |
+| `always_deny_first_layer` | 18 / 33 | 54.55% |
+| `always_fully_responsive` | 18 / 33 | 54.55% |
+
+The table is diagnostic, not a performance claim. Its purpose is to expose metric holes before model evaluation.
+
+## Protocol-relative reporting
+
+Every `score`, `evaluate`, and `evaluate-inference` result carries a manifest with:
+
+- protocol hash;
+- dataset hash;
+- model identifier;
+- prompt hash and arm.
+
+The protocol hash is derived from the annotation-guide and kernel versions. Results can therefore be reproduced or compared against a fork without treating an unlabeled algorithmic output as authority.
+
+## Corpus design
+
+The current seed includes direct denial, irrelevant counterassertion, qualified admission, evidence requests, bilayer partial and full responses, posture-versus-occurrence, channel-versus-content, inverse entailment, backed-claim challenges, and matched-scope qualification.
+
+Naturalistic collection retains public names, dates, and provenance; prefers found mirrors over synthesized reversals; uses independent blind annotation; reports field-level Krippendorff alpha; and publishes unresolved cases in a contested-typing set excluded from gold. See [the naturalistic corpus protocol](docs/naturalistic-corpus.md).
 
 ## Repository map
 
-- `src/responsiveness_bench/model.py`: typed primitives.
-- `src/responsiveness_bench/scoring.py`: pure verdict kernel.
-- `src/responsiveness_bench/invariance.py`: structural signatures and label validation.
-- `src/responsiveness_bench/evaluation.py`: prediction metrics.
-- `src/responsiveness_bench/codec.py`: deterministic JSONL interchange.
-- `src/responsiveness_bench/cli.py`: command interface.
-- `data/seed.jsonl`: six left/right/neutral seed triples.
-- `docs/annotation-guide.md`: annotation protocol.
-- `docs/method-note.md`: technical and research framing.
-- `docs/architecture.svg`: system diagram.
-- `CONTRIBUTING.md`: adversarial contribution protocol.
-- `CITATION.cff` and `REFERENCES.bib`: citation metadata and research references.
+- `src/responsiveness_bench/model.py`: typed records.
+- `src/responsiveness_bench/scoring.py`: deterministic verifier.
+- `src/responsiveness_bench/inference.py`: inference-mode metrics.
+- `src/responsiveness_bench/invariance.py`: structural signatures and corpus validation.
+- `src/responsiveness_bench/audit.py`: constant-policy exploit audit.
+- `src/responsiveness_bench/agreement.py`: field-level annotation agreement.
+- `src/responsiveness_bench/protocol.py`: protocol, prompt, and dataset identities.
+- `src/responsiveness_bench/protocol_assets/`: fixed prompts and output schema.
+- `data/seed`: eleven invariant triples.
+- `docs/annotation-guide.md`: operative annotation protocol.
+- `docs/naturalistic-corpus.md`: heat, provenance, annotation, and contamination protocol.
+- `docs/method-note.md`: research framing.
+- `CONTRIBUTING.md`: contribution requirements.
 
-## Deliberate limits
+## Limits
 
-This version does not infer claim layers or response acts from raw prose, adjudicate disputed facts, call a language model, or pretend that all political disagreement is structurally decidable. Those are separate stages. The operational core exists to make the decidable portion explicit, auditable, and suitable for reliable evaluation or later verifiable-reward training.
-
-## Contributing
-
-Adversarial cases are preferred. See [CONTRIBUTING.md](CONTRIBUTING.md) for the invariant-family requirements and submission checklist.
-
-## Citation
-
-GitHub will render a citation from [CITATION.cff](CITATION.cff). Supporting research references are collected in [REFERENCES.bib](REFERENCES.bib).
+The kernel verifies a supplied structure; it cannot certify that the semantic typing is correct. Inference mode measures that typing against protocol-relative gold. Responsiveness remains separate from factual correctness, evidentiary sufficiency, inference validity, burden allocation, and rhetoric. Those dimensions require separate modules.
 
 ## License
 
